@@ -24,6 +24,7 @@ input:focus,select:focus{border-color:#8196ad;box-shadow:0 0 0 3px #8196ad20}
 .clock-date{font-size:10px}
 .clock-source{display:none}
 .series-actions{display:flex;align-items:center;gap:8px}
+.series-toolbar{justify-content:flex-end}
 .series-picker{width:auto;max-width:240px;padding:9px 28px 9px 10px;font-size:11px;color:#555}
 @media(max-width:600px){.top{align-items:flex-start;gap:12px;margin-bottom:24px}.brand{gap:9px}.brand .eyebrow{font-size:8px}.brand h1{font-size:20px}.mark{width:32px;height:32px}.reference-clock{display:grid;grid-template-columns:auto auto;gap:3px 8px;padding:7px 9px}.clock-caption{justify-content:flex-end}.clock-time{font-size:20px;grid-column:1 / -1}.clock-date{grid-column:1 / -1;font-size:9px}}
 @media(max-width:520px){.content>.section-title{align-items:flex-start}.series-actions{flex-direction:column;align-items:stretch}.series-picker{max-width:100%}}

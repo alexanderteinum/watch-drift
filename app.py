@@ -66,7 +66,7 @@ def list_watches():
 def create_watch():
     name = (request.json or {}).get("name", "").strip()
     if not name:
-        return jsonify(error="Skriv inn et navn på klokka."), 400
+        return jsonify(error="Enter a name for the watch."), 400
     with connect_db() as db:
         cur = db.execute("INSERT INTO watches (name) VALUES (?)", (name,))
         watch_id = cur.lastrowid
@@ -93,7 +93,7 @@ def create_series():
     watch_id = data.get("watch_id")
     started_at = data.get("started_at") or datetime.now().astimezone().isoformat(timespec="minutes")
     if not watch_id:
-        return jsonify(error="Velg en klokke først."), 400
+        return jsonify(error="Select a watch first."), 400
     try:
         with connect_db() as db:
             cur = db.execute("INSERT INTO measurement_series (watch_id, started_at) VALUES (?, ?)",
@@ -102,7 +102,7 @@ def create_series():
             db.execute("INSERT INTO measurements (series_id, measured_at, offset_seconds) VALUES (?, ?, 0)",
                        (series_id, started_at))
     except sqlite3.IntegrityError:
-        return jsonify(error="Fant ikke klokka du valgte."), 400
+        return jsonify(error="The selected watch was not found."), 400
     return jsonify(id=series_id), 201
 
 
@@ -111,7 +111,7 @@ def list_measurements(series_id):
     with connect_db() as db:
         series = db.execute("SELECT id, watch_id, started_at FROM measurement_series WHERE id = ?", (series_id,)).fetchone()
         if not series:
-            return jsonify(error="Måleserien finnes ikke."), 404
+            return jsonify(error="Measurement series not found."), 404
         rows = db.execute("SELECT id, measured_at, offset_seconds FROM measurements WHERE series_id = ? ORDER BY julianday(measured_at), id",
                           (series_id,)).fetchall()
     return jsonify(series=dict(series), measurements=[dict(row) for row in rows])
@@ -125,7 +125,7 @@ def delete_measurement(series_id, measurement_id):
             (measurement_id, series_id),
         ).fetchone()
         if not measurement:
-            return jsonify(error="Målingen finnes ikke."), 404
+            return jsonify(error="Measurement not found."), 404
 
         first = db.execute(
             "SELECT id FROM measurements WHERE series_id = ? ORDER BY julianday(measured_at), id LIMIT 1",
@@ -159,10 +159,10 @@ def add_measurement(series_id):
     try:
         offset = float(data.get("offset_seconds"))
     except (TypeError, ValueError):
-        return jsonify(error="Avvik må være et tall i sekunder."), 400
+        return jsonify(error="Deviation must be a number of seconds."), 400
     with connect_db() as db:
         if not db.execute("SELECT 1 FROM measurement_series WHERE id = ?", (series_id,)).fetchone():
-            return jsonify(error="Måleserien finnes ikke."), 404
+            return jsonify(error="Measurement series not found."), 404
         cur = db.execute("INSERT INTO measurements (series_id, measured_at, offset_seconds) VALUES (?, ?, ?)",
                          (series_id, measured_at, offset))
     return jsonify(id=cur.lastrowid), 201

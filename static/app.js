@@ -15,7 +15,7 @@ function updateReferenceClock() {
   const now = new Date();
   const time = $('#reference-time');
   time.dateTime = now.toISOString();
-  time.textContent = new Intl.DateTimeFormat('nb-NO', {
+  time.textContent = new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
   }).format(now);
 }
@@ -23,7 +23,7 @@ function updateReferenceClock() {
 async function api(url, options = {}) {
   const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Noe gikk galt.');
+  if (!response.ok) throw new Error(data.error || 'Something went wrong.');
   return data;
 }
 
@@ -41,8 +41,8 @@ async function refreshWatches() {
 function renderWatchList() {
   $('#watch-list').innerHTML = watches.map(w => {
     const isSelected = w.id === selectedWatchId;
-    return `<li class="watch-item${isSelected ? ' selected' : ''}" data-watch-id="${w.id}"><button type="button" class="watch-select" aria-pressed="${isSelected}"><span class="watch-name">${escapeHtml(w.name)}</span></button><span class="watch-series">${w.series_count} serier</span></li>`;
-  }).join('') || '<li class="muted">Ingen klokker lagt til</li>';
+    return `<li class="watch-item${isSelected ? ' selected' : ''}" data-watch-id="${w.id}"><button type="button" class="watch-select" aria-pressed="${isSelected}"><span class="watch-name">${escapeHtml(w.name)}</span></button><span class="watch-series">${w.series_count} series</span></li>`;
+  }).join('') || '<li class="muted">No watches added</li>';
 }
 
 async function refreshSeries() {
@@ -50,11 +50,11 @@ async function refreshSeries() {
   if (selectedWatchId === null) selectedWatchId = allSeries[0]?.watch_id ?? watches[0]?.id ?? null;
   const series = allSeries.filter(s => s.watch_id === selectedWatchId);
   const selectedWatch = watches.find(w => w.id === selectedWatchId);
-  $('#empty-state h3').textContent = selectedWatch ? `Ingen måleserier for ${selectedWatch.name} ennå` : 'Ingen klokker lagt til';
-  $('#empty-state p').textContent = selectedWatch ? 'Start en måleserie når du stiller klokka.' : 'Legg til en klokke for å komme i gang.';
+  $('#empty-state h3').textContent = selectedWatch ? `No measurement series for ${selectedWatch.name} yet` : 'No watches added';
+  $('#empty-state p').textContent = selectedWatch ? 'Start a measurement series when you set the watch.' : 'Add a watch to get started.';
   $('#empty-state').hidden = series.length > 0;
   const picker = $('#series-picker');
-  picker.hidden = series.length < 2;
+  picker.hidden = series.length === 0;
   picker.innerHTML = series.map(s => `<option value="${s.id}">${dateRangeLabel(s.started_at, s.ended_at)}</option>`).join('');
   if (!series.some(s => s.id === selectedSeries)) selectedSeries = series[0]?.id ?? null;
   $('#series-area').hidden = !selectedSeries;
@@ -77,13 +77,13 @@ function escapeHtml(value) {
 
 function dateLabel(value) {
   const date = new Date(value);
-  return new Intl.DateTimeFormat('nb-NO', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function dateRangeLabel(startValue, endValue) {
   const start = new Date(startValue);
   const end = new Date(endValue || startValue);
-  const shortDate = date => new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' }).format(date).replace(/\.$/, '');
+  const shortDate = date => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(date).replace(/\.$/, '');
   const startYear = start.getFullYear();
   const endYear = end.getFullYear();
   return startYear === endYear
@@ -92,11 +92,11 @@ function dateRangeLabel(startValue, endValue) {
 }
 
 function fixedSeconds(value) {
-  return new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
 function wholeSeconds(value) {
-  return new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }).format(value);
 }
 
 async function showSeries(id) {
@@ -105,9 +105,6 @@ async function showSeries(id) {
   $('#series-area').hidden = false;
   selectedWatchId = data.series.watch_id;
   renderWatchList();
-  $('#series-name').textContent = dateRangeLabel(data.series.started_at, data.measurements.at(-1)?.measured_at || data.series.started_at);
-  const watch = watches.find(w => w.id === data.series.watch_id);
-  $('#series-meta').textContent = watch?.name || '';
   $('#measurement-rows').innerHTML = data.measurements.map((m, index) => {
     const first = data.measurements[0];
     const previous = data.measurements[index - 1];
@@ -117,14 +114,14 @@ async function showSeries(id) {
     const periodRate = periodDays > 0 ? (m.offset_seconds - previous.offset_seconds) / periodDays : null;
     const tone = m.offset_seconds < 0 ? 'slow' : m.offset_seconds > 0 ? 'fast' : '';
     const periodTone = periodRate === null ? '' : periodRate < 0 ? 'slow' : periodRate > 0 ? 'fast' : '';
-    return `<tr><td>${dateLabel(m.measured_at)}</td><td class="offset ${tone}">${wholeSeconds(m.offset_seconds)} s</td><td class="daily-rate">${averageRate === null ? '—' : `${fixedSeconds(averageRate)} s/d`}</td><td class="daily-rate ${periodTone}">${periodRate === null ? '—' : `${fixedSeconds(periodRate)} s/d`}</td><td class="delete-cell"><button type="button" class="delete-measurement" data-measurement-id="${m.id}" data-is-start="${index === 0}" data-is-only="${data.measurements.length === 1}" aria-label="Slett måling ${dateLabel(m.measured_at)}" title="Slett måling">×</button></td></tr>`;
+    return `<tr><td>${dateLabel(m.measured_at)}</td><td class="offset ${tone}">${wholeSeconds(m.offset_seconds)} s</td><td class="daily-rate">${averageRate === null ? '—' : `${fixedSeconds(averageRate)} s/d`}</td><td class="daily-rate ${periodTone}">${periodRate === null ? '—' : `${fixedSeconds(periodRate)} s/d`}</td><td class="delete-cell"><button type="button" class="delete-measurement" data-measurement-id="${m.id}" data-is-start="${index === 0}" data-is-only="${data.measurements.length === 1}" aria-label="Delete measurement ${dateLabel(m.measured_at)}" title="Delete measurement">×</button></td></tr>`;
   }).join('');
   const ms = data.measurements;
 }
 
 $('#watch-form').addEventListener('submit', async e => {
   e.preventDefault();
-  try { const watch = await api('/api/watches', { method: 'POST', body: JSON.stringify({ name: $('#watch-name').value }) }); selectedWatchId = watch.id; selectedSeries = null; $('#watch-name').value = ''; $('#watch-form').closest('details').open = false; await refreshWatches(); await refreshSeries(); toast('Klokka ble lagt til.'); }
+  try { const watch = await api('/api/watches', { method: 'POST', body: JSON.stringify({ name: $('#watch-name').value }) }); selectedWatchId = watch.id; selectedSeries = null; $('#watch-name').value = ''; $('#watch-form').closest('details').open = false; await refreshWatches(); await refreshSeries(); toast('Watch added.'); }
   catch (err) { toast(err.message); }
 });
 
@@ -145,17 +142,17 @@ $('#measurement-rows').addEventListener('click', async e => {
   const isStart = button.dataset.isStart === 'true';
   const isOnly = button.dataset.isOnly === 'true';
   const message = isOnly
-    ? 'Dette er seriens eneste måling. Slett målingen og den tomme serien?'
+    ? 'This is the only measurement in this series. Delete the measurement and the empty series?'
     : isStart
-      ? 'Dette er seriens startmåling. Slette den og starte serien på nytt fra neste måling? Avvikene regnes om.'
-      : 'Slette denne målingen?';
+      ? 'This is the starting measurement. Delete it and restart the series from the next measurement? Deviations will be recalculated.'
+      : 'Delete this measurement?';
   if (!window.confirm(message)) return;
   try {
     const result = await api(`/api/series/${selectedSeries}/measurements/${button.dataset.measurementId}`, { method: 'DELETE' });
     if (result.series_deleted) selectedSeries = null;
     await refreshWatches();
     await refreshSeries();
-    toast(result.series_deleted ? 'Målingen og den tomme serien ble slettet.' : 'Målingen ble slettet.');
+    toast(result.series_deleted ? 'Measurement and empty series deleted.' : 'Measurement deleted.');
   } catch (err) { toast(err.message); }
 });
 $('#cancel-series').addEventListener('click', () => $('#series-dialog').close());
@@ -164,7 +161,7 @@ $('#series-form').addEventListener('submit', async e => {
   try {
     const watchId = selectedWatchId;
     const result = await api('/api/series', { method: 'POST', body: JSON.stringify({ watch_id: watchId, started_at: new Date($('#started-at').value).toISOString() }) });
-    $('#series-dialog').close(); selectedWatchId = watchId; selectedSeries = result.id; await refreshWatches(); await refreshSeries(); toast('Måleserien er startet.');
+    $('#series-dialog').close(); selectedWatchId = watchId; selectedSeries = result.id; await refreshWatches(); await refreshSeries(); toast('Measurement series started.');
   } catch (err) { toast(err.message); }
 });
 
@@ -181,7 +178,7 @@ $('#measurement-form').addEventListener('submit', async e => {
   if (!selectedSeries) return;
   try {
     await api(`/api/series/${selectedSeries}/measurements`, { method: 'POST', body: JSON.stringify({ measured_at: new Date($('#measured-at').value).toISOString(), offset_seconds: $('#offset').value }) });
-    $('#measurement-dialog').close(); $('#offset').value = ''; $('#measured-at').value = localDateTime(); await showSeries(selectedSeries); await refreshWatches(); toast('Målingen ble lagret.');
+    $('#measurement-dialog').close(); $('#offset').value = ''; $('#measured-at').value = localDateTime(); await showSeries(selectedSeries); await refreshWatches(); toast('Measurement saved.');
   } catch (err) { toast(err.message); }
 });
 

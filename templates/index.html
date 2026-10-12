@@ -1,56 +1,55 @@
 <!doctype html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Klokkelogg</title>
+  <title>watch-diff</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
   <main class="page">
     <header class="top">
-      <div class="brand"><div class="mark"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" aria-hidden="true"></div><h1>Klokkelogg</h1></div>
+      <div class="brand"><div class="mark"><img src="{{ url_for('static', filename='logo.svg') }}" alt="" aria-hidden="true"></div><h1>watch-diff</h1></div>
     </header>
     <section class="layout">
       <aside class="sidebar">
-        <div class="section-title"><h2>Klokkene mine</h2></div>
+        <div class="section-title"><h2>My watches</h2></div>
         <ul id="watch-list" class="watch-list"></ul>
         <details class="add-watch">
-          <summary><span class="add-watch-plus" aria-hidden="true">+</span><span>Legg til klokke</span></summary>
+          <summary><span class="add-watch-plus" aria-hidden="true">+</span><span>Add a watch</span></summary>
           <form id="watch-form">
-            <label for="watch-name">Klokkenavn</label>
-            <div class="inline"><input id="watch-name" required><button class="icon-button" aria-label="Legg til klokke">+</button></div>
+            <label for="watch-name">Watch name</label>
+            <div class="inline"><input id="watch-name" required><button class="icon-button" aria-label="Add watch">+</button></div>
           </form>
         </details>
       </aside>
       <section class="content">
-        <div class="section-title"><div><p class="eyebrow">MÅLINGER</p><h2>Måleserier</h2></div><div class="series-actions"><select id="series-picker" class="series-picker" aria-label="Velg måleserie" hidden></select><button id="new-series" class="button primary">+ Ny måleserie</button></div></div>
-        <div id="empty-state" class="empty"><div class="empty-icon">◷</div><h3>Ingen måleserier ennå</h3><p>Legg til en klokke og start en serie når du stiller den.</p></div>
+        <div class="section-title series-toolbar"><div class="series-actions"><select id="series-picker" class="series-picker" aria-label="Select measurement period" hidden></select><button id="new-series" class="button primary">+ New series</button></div></div>
+        <div id="empty-state" class="empty"><div class="empty-icon">◷</div><h3>No measurement series yet</h3><p>Add a watch and start a series when you set it.</p></div>
         <div id="series-area" class="series-area" hidden>
-          <div class="series-heading"><div><h3 id="series-name"></h3><p id="series-meta" class="muted"></p></div></div>
-          <div class="table-wrap"><table><thead><tr><th>MÅLETIDSPUNKT</th><th>AVVIK SIDEN START</th><th>SNITT SIDEN START (S/DAG)</th><th>SNITT SISTE PERIODE (S/DAG)</th><th></th></tr></thead><tbody id="measurement-rows"></tbody></table></div>
-          <button id="open-measurement-dialog" class="button primary log-button">Logg et avvik</button>
+          <div class="table-wrap"><table><thead><tr><th>MEASURED AT</th><th>DEVIATION SINCE START</th><th>AVERAGE SINCE START (S/D)</th><th>AVERAGE LAST PERIOD (S/D)</th><th></th></tr></thead><tbody id="measurement-rows"></tbody></table></div>
+          <button id="open-measurement-dialog" class="button primary log-button">Log a deviation</button>
         </div>
       </section>
     </section>
   </main>
   <dialog id="series-dialog">
     <form id="series-form" method="dialog">
-      <div class="dialog-head"><div><p class="eyebrow">NY MÅLING</p><h2>Start en måleserie</h2></div><button class="close" value="cancel" aria-label="Lukk">×</button></div>
-      <p class="dialog-copy">Still den valgte klokka etter en pålitelig tidskilde først. Startpunktet registreres som 0 sekunders avvik.</p>
-      <label>Tidspunkt for stilling<input id="started-at" type="datetime-local" required></label>
-      <div class="dialog-actions"><button type="button" class="button secondary" id="cancel-series">Avbryt</button><button class="button primary" value="default">Start serie</button></div>
+      <div class="dialog-head"><div><p class="eyebrow">NEW SERIES</p><h2>Start a measurement series</h2></div><button class="close" value="cancel" aria-label="Close">×</button></div>
+      <p class="dialog-copy">First, set the selected watch using a reliable time source. The starting point is recorded as a deviation of 0 seconds.</p>
+      <label>Time set<input id="started-at" type="datetime-local" required></label>
+      <div class="dialog-actions"><button type="button" class="button secondary" id="cancel-series">Cancel</button><button class="button primary" value="default">Start series</button></div>
     </form>
   </dialog>
   <dialog id="measurement-dialog" class="measurement-dialog">
-    <div class="dialog-head"><div><p class="eyebrow">NY MÅLING</p><h2>Logg et avvik</h2></div><button type="button" class="close" id="close-measurement-dialog" aria-label="Lukk">×</button></div>
-    <section class="reference-clock measurement-clock" aria-label="Referansetid">
+    <div class="dialog-head"><div><p class="eyebrow">NEW MEASUREMENT</p><h2>Log a deviation</h2></div><button type="button" class="close" id="close-measurement-dialog" aria-label="Close">×</button></div>
+    <section class="reference-clock measurement-clock" aria-label="Reference time">
       <time id="reference-time" class="clock-time" aria-live="off">--:--:--</time>
-      <p class="clock-source">Lokal tid fra enheten din</p>
+      <p class="clock-source">Local device time</p>
     </section>
     <form id="measurement-form" class="measurement-form">
-      <div class="fields"><label>Tidspunkt<input id="measured-at" type="datetime-local" required></label><label>Avvik i sekunder<input id="offset" type="number" step="1" required></label><button class="button primary">Lagre måling</button></div>
+      <div class="fields"><label>Time<input id="measured-at" type="datetime-local" required></label><label>Deviation in seconds<input id="offset" type="number" step="1" required></label><button class="button primary">Save measurement</button></div>
     </form>
   </dialog>
   <div id="toast" role="status" class="toast"></div>
