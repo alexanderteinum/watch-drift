@@ -14,7 +14,7 @@
     </header>
     <section class="layout">
       <aside class="sidebar">
-        <div class="section-title"><h2>My watches</h2></div>
+        <div class="section-title"><h2 class="sidebar-label">MY WATCHES</h2></div>
         <ul id="watch-list" class="watch-list"></ul>
         <details class="add-watch">
           <summary><span class="add-watch-plus" aria-hidden="true">+</span><span>Add a watch</span></summary>
@@ -34,10 +34,13 @@
       </section>
     </section>
   </main>
-  <dialog id="series-dialog">
+  <dialog id="series-dialog" class="measurement-dialog">
     <form id="series-form" method="dialog">
       <div class="dialog-head"><div><p class="eyebrow">NEW SERIES</p><h2>Start a measurement series</h2></div><button class="close" value="cancel" aria-label="Close">×</button></div>
-      <p class="dialog-copy">First, set the selected watch using a reliable time source. The starting point is recorded as a deviation of 0 seconds.</p>
+      <section class="reference-clock measurement-clock" aria-label="Reference time">
+        <time class="clock-time" aria-live="off">--:--:--</time>
+        <p class="clock-source">Local device time</p>
+      </section>
       <label>Time set<input id="started-at" type="datetime-local" required></label>
       <div class="dialog-actions"><button type="button" class="button secondary" id="cancel-series">Cancel</button><button class="button primary" value="default">Start series</button></div>
     </form>

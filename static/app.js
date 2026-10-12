@@ -13,11 +13,13 @@ function localDateTime() {
 
 function updateReferenceClock() {
   const now = new Date();
-  const time = $('#reference-time');
-  time.dateTime = now.toISOString();
-  time.textContent = new Intl.DateTimeFormat('en-GB', {
+  const formattedTime = new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
   }).format(now);
+  document.querySelectorAll('.reference-clock .clock-time').forEach(time => {
+    time.dateTime = now.toISOString();
+    time.textContent = formattedTime;
+  });
 }
 
 async function api(url, options = {}) {
