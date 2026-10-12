@@ -157,7 +157,9 @@ $('#measurement-rows').addEventListener('click', async e => {
     toast(result.series_deleted ? 'Measurement and empty series deleted.' : 'Measurement deleted.');
   } catch (err) { toast(err.message); }
 });
-$('#cancel-series').addEventListener('click', () => $('#series-dialog').close());
+const closeSeriesDialog = () => $('#series-dialog').close();
+$('#cancel-series').addEventListener('click', closeSeriesDialog);
+$('#cancel-new-series').addEventListener('click', closeSeriesDialog);
 $('#series-form').addEventListener('submit', async e => {
   e.preventDefault();
   try {
