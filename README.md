@@ -2,6 +2,8 @@
 
 A small local web app for tracking the accuracy of mechanical watches. Flask serves the page and a small JSON API; all data is stored in SQLite in `watches.db`.
 
+![watch-drift screenshot](screenshot.png)
+
 ## Getting started
 
 Requires Python 3.9 or newer.
