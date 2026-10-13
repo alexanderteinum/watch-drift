@@ -1,6 +1,6 @@
 # watch-drift
 
-A local app for tracking the accuracy of mechanical watches.
+A local web app for tracking the accuracy of mechanical watches.
 
 ![watch-drift screenshot](screenshot.png)
 
