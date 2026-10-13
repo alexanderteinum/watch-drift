@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>watch-drift</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=3) }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
@@ -28,7 +28,7 @@
         <div class="section-title series-toolbar"><div class="series-actions"><select id="series-picker" class="series-picker" aria-label="Select measurement period" hidden></select><button id="new-series" class="button primary">+ New series</button></div></div>
         <div id="empty-state" class="empty"><div class="empty-icon">◷</div><h3>No measurement series yet</h3><p>Add a watch and start a series when you set it.</p></div>
         <div id="series-area" class="series-area" hidden>
-          <div class="table-wrap"><table><thead><tr><th>MEASURED AT</th><th>DEVIATION SINCE START</th><th>AVERAGE SINCE START (S/D)</th><th>AVERAGE LAST PERIOD (S/D)</th><th></th></tr></thead><tbody id="measurement-rows"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>MEASURED AT</th><th>DEVIATION SINCE START</th><th>AVERAGE SINCE START</th><th>AVERAGE LAST PERIOD</th><th></th></tr></thead><tbody id="measurement-rows"></tbody></table></div>
           <button id="open-measurement-dialog" class="button primary log-button">Log a deviation</button>
         </div>
       </section>

@@ -153,3 +153,9 @@ tbody tr:last-child td{border-bottom:0}
 
 /* Let section backgrounds define the layout without an outer frame. */
 .sidebar,.content{border-color:transparent}
+
+/* Keep table body copy at one consistent size. */
+td{font-size:12px}
+.offset,.daily-rate{font-size:inherit}
+.offset{font-weight:400}
+tbody td,tbody td.offset,tbody td.daily-rate{font-size:12px}
