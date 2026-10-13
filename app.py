@@ -171,4 +171,6 @@ def add_measurement(series_id):
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    from waitress import serve
+
+    serve(app, host="127.0.0.1", port=5000)

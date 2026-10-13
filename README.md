@@ -25,4 +25,6 @@ Then open http://127.0.0.1:5000 in your browser. The database is created automat
 
 The app calculates the change in deviation between measurements as seconds per day. This is a simple measurement, so the result depends on how accurately you can read both the reference time and the watch.
 
-The app is intended for local use. Flask's built-in development server is not configured to expose the app to the internet.
+## Local access
+
+The app uses Waitress and listens only on `127.0.0.1:5000`, so it is reachable only from the machine running it. There is no sign-in screen. Keep it local unless you add suitable access controls before allowing other devices to connect.
