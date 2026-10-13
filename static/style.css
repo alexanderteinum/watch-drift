@@ -139,3 +139,17 @@ input:focus,select:focus{border-color:#5790d0;box-shadow:0 0 0 3px #2574c71f}
 @media(prefers-color-scheme:dark){.watch-item.selected::before{background:#263747}}
 .page{max-width:1280px}
 td{padding-top:9px;padding-bottom:9px}
+
+/* Quiet table treatment */
+.table-wrap{border:0;border-radius:0;background:transparent;overflow-x:auto;overflow-y:hidden}
+table{border-collapse:collapse}
+th{background:transparent;border-bottom:1px solid var(--line);padding:10px 14px}
+td{border-top:0;border-bottom:1px solid var(--line);padding:11px 14px}
+tbody tr:last-child td{border-bottom:0}
+@media(prefers-color-scheme:dark){
+  .table-wrap{border-color:transparent;background:transparent}
+  th,td{border-color:#343b45}
+}
+
+/* Let section backgrounds define the layout without an outer frame. */
+.sidebar,.content{border-color:transparent}
