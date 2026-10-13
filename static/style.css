@@ -159,3 +159,21 @@ td{font-size:12px}
 .offset,.daily-rate{font-size:inherit}
 .offset{font-weight:400}
 tbody td,tbody td.offset,tbody td.daily-rate{font-size:12px}
+
+/* Consistent spacing and interaction details across the interface. */
+:root{--radius-surface:12px;--radius-control:8px;--space-section:24px}
+.layout{gap:var(--space-section)}
+.sidebar,.content{border-radius:var(--radius-surface)}
+.sidebar{padding:var(--space-section) 20px}
+.content{padding:var(--space-section)}
+.content>.section-title{margin-bottom:var(--space-section)}
+.watch-list{padding-top:8px;padding-bottom:16px}
+.watch-item{min-height:38px}
+input,select,.button,.icon-button{border-radius:var(--radius-control)}
+.button{font-size:13px;transition:background-color .16s ease,color .16s ease,box-shadow .16s ease}
+input,select{transition:border-color .16s ease,box-shadow .16s ease}
+.delete-measurement{transition:background-color .16s ease,color .16s ease}
+dialog{border-radius:var(--radius-surface)}
+.watch-item.selected::before{border-radius:var(--radius-control)}
+.watch-select:focus-visible,.delete-measurement:focus-visible{outline:2px solid #5790d0;outline-offset:2px}
+@media(max-width:700px){.sidebar{padding:18px}.content{padding:20px 16px}}
