@@ -177,3 +177,8 @@ dialog{border-radius:var(--radius-surface)}
 .watch-item.selected::before{border-radius:var(--radius-control)}
 .watch-select:focus-visible,.delete-measurement:focus-visible{outline:2px solid #5790d0;outline-offset:2px}
 @media(max-width:700px){.sidebar{padding:18px}.content{padding:20px 16px}}
+
+.chart-section{margin-bottom:24px}
+.chart-title{margin:0 0 9px;color:var(--muted);font:500 12px 'Inter',sans-serif}
+.chart-container{position:relative;width:100%;height:200px}
+@media(max-width:700px){.chart-section{margin-bottom:18px}.chart-container{height:170px}}

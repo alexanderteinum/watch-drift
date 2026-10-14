@@ -114,7 +114,13 @@ def list_measurements(series_id):
             return jsonify(error="Measurement series not found."), 404
         rows = db.execute("SELECT id, measured_at, offset_seconds FROM measurements WHERE series_id = ? ORDER BY julianday(measured_at), id",
                           (series_id,)).fetchall()
-    return jsonify(series=dict(series), measurements=[dict(row) for row in rows])
+        watch_range = db.execute("""
+            SELECT MIN(m.offset_seconds) AS min_offset, MAX(m.offset_seconds) AS max_offset
+            FROM measurements m
+            JOIN measurement_series s ON s.id = m.series_id
+            WHERE s.watch_id = ?
+        """, (series["watch_id"],)).fetchone()
+    return jsonify(series=dict(series), measurements=[dict(row) for row in rows], watch_range=dict(watch_range))
 
 
 @app.delete("/api/series/<int:series_id>/measurements/<int:measurement_id>")

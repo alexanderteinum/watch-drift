@@ -2,6 +2,10 @@ const $ = (selector) => document.querySelector(selector);
 let watches = [];
 let selectedSeries = null;
 let selectedWatchId = null;
+let deviationChart = null;
+let chartMeasurements = [];
+let chartWatchRange = null;
+const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
 function localDateTime() {
   const now = new Date();
@@ -82,6 +86,87 @@ function dateLabel(value) {
   return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+function renderDeviationChart(measurements, watchRange = chartWatchRange) {
+  chartMeasurements = measurements;
+  chartWatchRange = watchRange;
+  const section = $('#chart-section');
+  if (!window.Chart || measurements.length < 2) {
+    section.hidden = true;
+    if (deviationChart) deviationChart.destroy();
+    deviationChart = null;
+    return;
+  }
+
+  if (deviationChart) deviationChart.destroy();
+  section.hidden = false;
+  const dark = colorScheme.matches;
+  const textColor = dark ? '#aeb5bf' : '#7f8790';
+  const gridColor = dark ? 'rgba(174,181,191,.14)' : 'rgba(82,94,108,.12)';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  const offsets = measurements.map(m => Number(m.offset_seconds));
+  const minOffset = Number(watchRange?.min_offset ?? Math.min(...offsets));
+  const maxOffset = Number(watchRange?.max_offset ?? Math.max(...offsets));
+  const rangePadding = Math.max((maxOffset - minOffset) * 0.06, 1);
+  const yMin = minOffset - rangePadding;
+  const yMax = maxOffset + rangePadding;
+  const shortDate = value => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
+    .format(new Date(Number(value))).replace(/\.$/, '');
+
+  deviationChart = new Chart($('#deviation-chart'), {
+    type: 'line',
+    data: {
+      datasets: [{
+        data: measurements.map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
+        borderColor: accent,
+        backgroundColor: accent,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBorderWidth: 0,
+        tension: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      parsing: false,
+      normalized: true,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => items.length ? dateLabel(new Date(items[0].parsed.x)) : '',
+            label: item => `${wholeSeconds(item.parsed.y)} s`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: textColor, maxTicksLimit: 6, maxRotation: 0, callback: shortDate },
+        },
+        y: {
+          min: yMin,
+          max: yMax,
+          grid: { color: context => Number(context.tick.value) === 0 ? (dark ? 'rgba(174,181,191,.3)' : 'rgba(82,94,108,.25)') : gridColor },
+          border: { display: false },
+          ticks: {
+            color: textColor,
+            callback: value => `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(value)} s`,
+          },
+        },
+      },
+    },
+  });
+}
+
+colorScheme.addEventListener('change', () => {
+  if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements);
+});
+
 function dateRangeLabel(startValue, endValue) {
   const start = new Date(startValue);
   const end = new Date(endValue || startValue);
@@ -107,6 +192,7 @@ async function showSeries(id) {
   $('#series-area').hidden = false;
   selectedWatchId = data.series.watch_id;
   renderWatchList();
+  renderDeviationChart(data.measurements, data.watch_range);
   $('#measurement-rows').innerHTML = data.measurements.map((m, index) => {
     const first = data.measurements[0];
     const previous = data.measurements[index - 1];
