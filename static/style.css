@@ -216,3 +216,40 @@ dialog{border-radius:var(--radius-surface)}
   .watch-item.selected::before{display:none}
   dialog,.toast{display:none!important}
 }
+
+/* Platform-adaptive neutral surfaces with the user's system accent. */
+@media screen{
+  :root{
+    color-scheme:light dark;
+    --ink:CanvasText;
+    --muted:#7f8790;
+    --line:color-mix(in srgb,CanvasText 14%,Canvas);
+    --paper:Canvas;
+    --white:color-mix(in srgb,CanvasText 2.5%,Canvas);
+    --green:AccentColor;
+    --soft:color-mix(in srgb,AccentColor 10%,Canvas);
+  }
+  body{background:Canvas;color:CanvasText}
+  .sidebar,.content{background:color-mix(in srgb,CanvasText 3%,Canvas);border-color:transparent}
+  .mark{background:AccentColor;color:#fff;box-shadow:none}
+  input,select{background:Field;color:FieldText;border-color:var(--line);color-scheme:light dark;accent-color:AccentColor}
+  input:focus,select:focus{border-color:AccentColor;box-shadow:0 0 0 3px color-mix(in srgb,AccentColor 18%,transparent)}
+  .button.primary{background:AccentColor;color:#fff}
+  .button.primary:hover{background:color-mix(in srgb,AccentColor 86%,CanvasText)}
+  .button.secondary,.icon-button{background:color-mix(in srgb,CanvasText 7%,Canvas);color:CanvasText}
+  .watch-item.selected::before{background:color-mix(in srgb,AccentColor 12%,Canvas)}
+  .watch-item.selected .watch-name{color:CanvasText}
+  .watch-item.selected .watch-dot,.add-watch-plus{color:AccentColor;background:AccentColor}
+  .add-watch-plus{background:transparent}
+  .watch-select:focus-visible,.delete-measurement:focus-visible{outline-color:AccentColor}
+  .table-wrap{background:transparent}
+  th{background:transparent!important;color:var(--muted);border-color:var(--line)}
+  td{color:color-mix(in srgb,CanvasText 82%,Canvas);border-color:var(--line)!important}
+  .offset,.offset.fast,.offset.slow,.daily-rate,.daily-rate.fast,.daily-rate.slow{color:color-mix(in srgb,CanvasText 78%,Canvas)}
+  dialog{background:Canvas;color:CanvasText;border-color:var(--line)}
+  dialog::backdrop{background:color-mix(in srgb,CanvasText 48%,transparent)}
+  .toast{background:CanvasText;color:Canvas}
+}
+@media screen and (prefers-color-scheme:dark){
+  :root{--muted:#aeb5bf}
+}

@@ -107,36 +107,27 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
   if (deviationChart) deviationChart.destroy();
   section.hidden = false;
   const dark = colorScheme.matches && !printMode;
-  const textColor = dark ? '#aeb5bf' : '#7f8790';
+  const textColor = printMode ? '#555' : getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
   const gridColor = dark ? 'rgba(174,181,191,.14)' : 'rgba(82,94,108,.12)';
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
   const offsets = measurements.map(m => Number(m.offset_seconds));
   const minOffset = Number(watchRange?.min_offset ?? Math.min(...offsets));
   const maxOffset = Number(watchRange?.max_offset ?? Math.max(...offsets));
   const rangePadding = Math.max((maxOffset - minOffset) * 0.06, 1);
   const yMin = minOffset - rangePadding;
   const yMax = maxOffset + rangePadding;
-  const palette = ['#2574c7', '#d47a42', '#8b72c1', '#438b70', '#c05e76', '#9a8b43'];
   const datasets = seriesList
-    ? seriesList.map((series, index) => {
-      const color = palette[index % palette.length];
-      return {
+    ? seriesList.map(series => ({
         label: dateRangeLabel(series.started_at, series.ended_at),
         data: measurements.filter(m => m.series_id === series.id)
           .map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
-        borderColor: color,
-        backgroundColor: color,
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
         pointBorderWidth: 0,
         tension: 0,
-      };
-    })
+      }))
     : [{
       data: measurements.map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
-      borderColor: accent,
-      backgroundColor: accent,
       borderWidth: 2,
       pointRadius: 3,
       pointHoverRadius: 5,
@@ -159,6 +150,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
       normalized: true,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       plugins: {
+        colors: { forceOverride: true },
         legend: {
           display: Boolean(seriesList && seriesList.length > 1),
           labels: { color: textColor, usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16 },
