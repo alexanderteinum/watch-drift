@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>watch-drift</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=5) }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=8) }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" defer></script>
-  <script src="{{ url_for('static', filename='app.js', v=2) }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js', v=6) }}" defer></script>
 </head>
 <body>
   <main class="page">
@@ -26,6 +26,7 @@
         </details>
       </aside>
       <section class="content">
+        <div class="print-meta"><h2 id="print-watch-name"></h2><p id="print-series-label"></p></div>
         <div class="section-title series-toolbar"><div class="series-actions"><select id="series-picker" class="series-picker" aria-label="Select measurement period" hidden></select><button id="new-series" class="button primary">+ New series</button></div></div>
         <div id="empty-state" class="empty"><div class="empty-icon">◷</div><h3>No measurement series yet</h3><p>Add a watch and start a series when you set it.</p></div>
         <div id="series-area" class="series-area" hidden>

@@ -6,6 +6,7 @@ let deviationChart = null;
 let chartMeasurements = [];
 let chartWatchRange = null;
 let chartSeriesList = null;
+let printMode = false;
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
 function localDateTime() {
@@ -105,7 +106,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
 
   if (deviationChart) deviationChart.destroy();
   section.hidden = false;
-  const dark = colorScheme.matches;
+  const dark = colorScheme.matches && !printMode;
   const textColor = dark ? '#aeb5bf' : '#7f8790';
   const gridColor = dark ? 'rgba(174,181,191,.14)' : 'rgba(82,94,108,.12)';
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
@@ -145,6 +146,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
   const shortDate = value => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
     .format(new Date(Number(value))).replace(/\.$/, '');
 
+  Chart.defaults.font.family = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   deviationChart = new Chart($('#deviation-chart'), {
     type: 'line',
     data: {
@@ -188,9 +190,22 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
       },
     },
   });
+  if (printMode) {
+    const bounds = $('#deviation-chart').parentElement.getBoundingClientRect();
+    if (bounds.width > 0 && bounds.height > 0) deviationChart.resize(bounds.width, bounds.height);
+  }
 }
 
 colorScheme.addEventListener('change', () => {
+  if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements, chartWatchRange, chartSeriesList);
+});
+
+window.addEventListener('beforeprint', () => {
+  printMode = true;
+  if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements, chartWatchRange, chartSeriesList);
+});
+window.addEventListener('afterprint', () => {
+  printMode = false;
   if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements, chartWatchRange, chartSeriesList);
 });
 
@@ -220,6 +235,7 @@ async function showSeries(id) {
   $('#open-measurement-dialog').hidden = false;
   selectedWatchId = data.series.watch_id;
   renderWatchList();
+  updatePrintMeta(dateRangeLabel(data.series.started_at, data.measurements.at(-1)?.measured_at || data.series.started_at));
   renderDeviationChart(data.measurements, data.watch_range);
   renderMeasurementRows(data.measurements, false);
 }
@@ -229,8 +245,17 @@ async function showAllSeries() {
   selectedSeries = 'all';
   $('#series-area').hidden = false;
   $('#open-measurement-dialog').hidden = true;
+  updatePrintMeta('All series');
   renderDeviationChart(data.measurements, data.watch_range, data.series);
   renderMeasurementRows(data.measurements, true);
+}
+
+function updatePrintMeta(seriesLabel) {
+  const watch = watches.find(item => item.id === selectedWatchId);
+  const watchName = $('#print-watch-name');
+  const seriesName = $('#print-series-label');
+  if (watchName) watchName.textContent = watch?.name || '';
+  if (seriesName) seriesName.textContent = seriesLabel;
 }
 
 function renderMeasurementRows(measurements, includeSeries) {
