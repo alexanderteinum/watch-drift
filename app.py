@@ -123,6 +123,38 @@ def list_measurements(series_id):
     return jsonify(series=dict(series), measurements=[dict(row) for row in rows], watch_range=dict(watch_range))
 
 
+@app.get("/api/watches/<int:watch_id>/measurements")
+def list_watch_measurements(watch_id):
+    with connect_db() as db:
+        if not db.execute("SELECT 1 FROM watches WHERE id = ?", (watch_id,)).fetchone():
+            return jsonify(error="Watch not found."), 404
+        series = db.execute("""
+            SELECT s.id, s.watch_id, s.started_at,
+                   (SELECT m.measured_at FROM measurements m
+                    WHERE m.series_id = s.id
+                    ORDER BY julianday(m.measured_at) DESC, m.id DESC LIMIT 1) AS ended_at
+            FROM measurement_series s
+            WHERE s.watch_id = ?
+            ORDER BY julianday(s.started_at), s.id
+        """, (watch_id,)).fetchall()
+        rows = db.execute("""
+            SELECT m.id, m.series_id, m.measured_at, m.offset_seconds,
+                   s.started_at AS series_started_at
+            FROM measurements m
+            JOIN measurement_series s ON s.id = m.series_id
+            WHERE s.watch_id = ?
+            ORDER BY julianday(m.measured_at), m.id
+        """, (watch_id,)).fetchall()
+        watch_range = db.execute("""
+            SELECT MIN(m.offset_seconds) AS min_offset, MAX(m.offset_seconds) AS max_offset
+            FROM measurements m
+            JOIN measurement_series s ON s.id = m.series_id
+            WHERE s.watch_id = ?
+        """, (watch_id,)).fetchone()
+    return jsonify(series=[dict(row) for row in series], measurements=[dict(row) for row in rows],
+                   watch_range=dict(watch_range))
+
+
 @app.delete("/api/series/<int:series_id>/measurements/<int:measurement_id>")
 def delete_measurement(series_id, measurement_id):
     with connect_db() as db:

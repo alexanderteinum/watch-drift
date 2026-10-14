@@ -5,6 +5,7 @@ let selectedWatchId = null;
 let deviationChart = null;
 let chartMeasurements = [];
 let chartWatchRange = null;
+let chartSeriesList = null;
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
 function localDateTime() {
@@ -61,13 +62,17 @@ async function refreshSeries() {
   $('#empty-state').hidden = series.length > 0;
   const picker = $('#series-picker');
   picker.hidden = series.length === 0;
-  picker.innerHTML = series.map(s => `<option value="${s.id}">${dateRangeLabel(s.started_at, s.ended_at)}</option>`).join('');
-  if (!series.some(s => s.id === selectedSeries)) selectedSeries = series[0]?.id ?? null;
+  picker.innerHTML = series.length
+    ? `<option value="all">All series</option>${series.map(s => `<option value="${s.id}">${dateRangeLabel(s.started_at, s.ended_at)}</option>`).join('')}`
+    : '';
+  if (!series.length) selectedSeries = null;
+  else if (selectedSeries !== 'all' && !series.some(s => s.id === selectedSeries)) selectedSeries = series[0]?.id ?? null;
   $('#series-area').hidden = !selectedSeries;
   $('#new-series').disabled = !selectedWatchId;
   renderWatchList();
   if (selectedSeries) picker.value = String(selectedSeries);
-  if (selectedSeries) await showSeries(selectedSeries);
+  if (selectedSeries === 'all') await showAllSeries();
+  else if (selectedSeries) await showSeries(selectedSeries);
 }
 
 async function selectWatch(watchId) {
@@ -86,9 +91,10 @@ function dateLabel(value) {
   return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-function renderDeviationChart(measurements, watchRange = chartWatchRange) {
+function renderDeviationChart(measurements, watchRange = chartWatchRange, seriesList = null) {
   chartMeasurements = measurements;
   chartWatchRange = watchRange;
+  chartSeriesList = seriesList;
   const section = $('#chart-section');
   if (!window.Chart || measurements.length < 2) {
     section.hidden = true;
@@ -109,22 +115,40 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange) {
   const rangePadding = Math.max((maxOffset - minOffset) * 0.06, 1);
   const yMin = minOffset - rangePadding;
   const yMax = maxOffset + rangePadding;
+  const palette = ['#2574c7', '#d47a42', '#8b72c1', '#438b70', '#c05e76', '#9a8b43'];
+  const datasets = seriesList
+    ? seriesList.map((series, index) => {
+      const color = palette[index % palette.length];
+      return {
+        label: dateRangeLabel(series.started_at, series.ended_at),
+        data: measurements.filter(m => m.series_id === series.id)
+          .map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBorderWidth: 0,
+        tension: 0,
+      };
+    })
+    : [{
+      data: measurements.map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
+      borderColor: accent,
+      backgroundColor: accent,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBorderWidth: 0,
+      tension: 0,
+    }];
   const shortDate = value => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
     .format(new Date(Number(value))).replace(/\.$/, '');
 
   deviationChart = new Chart($('#deviation-chart'), {
     type: 'line',
     data: {
-      datasets: [{
-        data: measurements.map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
-        borderColor: accent,
-        backgroundColor: accent,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        pointBorderWidth: 0,
-        tension: 0,
-      }],
+      datasets,
     },
     options: {
       responsive: true,
@@ -133,7 +157,10 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange) {
       normalized: true,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: Boolean(seriesList && seriesList.length > 1),
+          labels: { color: textColor, usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16 },
+        },
         tooltip: {
           callbacks: {
             title: items => items.length ? dateLabel(new Date(items[0].parsed.x)) : '',
@@ -164,7 +191,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange) {
 }
 
 colorScheme.addEventListener('change', () => {
-  if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements);
+  if (chartMeasurements.length > 1) renderDeviationChart(chartMeasurements, chartWatchRange, chartSeriesList);
 });
 
 function dateRangeLabel(startValue, endValue) {
@@ -190,21 +217,53 @@ async function showSeries(id) {
   selectedSeries = id;
   const data = await api(`/api/series/${id}/measurements`);
   $('#series-area').hidden = false;
+  $('#open-measurement-dialog').hidden = false;
   selectedWatchId = data.series.watch_id;
   renderWatchList();
   renderDeviationChart(data.measurements, data.watch_range);
-  $('#measurement-rows').innerHTML = data.measurements.map((m, index) => {
-    const first = data.measurements[0];
-    const previous = data.measurements[index - 1];
+  renderMeasurementRows(data.measurements, false);
+}
+
+async function showAllSeries() {
+  const data = await api(`/api/watches/${selectedWatchId}/measurements`);
+  selectedSeries = 'all';
+  $('#series-area').hidden = false;
+  $('#open-measurement-dialog').hidden = true;
+  renderDeviationChart(data.measurements, data.watch_range, data.series);
+  renderMeasurementRows(data.measurements, true);
+}
+
+function renderMeasurementRows(measurements, includeSeries) {
+  $('.table-wrap').classList.toggle('all-series', includeSeries);
+  const groups = new Map();
+  measurements.forEach(measurement => {
+    if (!groups.has(measurement.series_id ?? selectedSeries)) groups.set(measurement.series_id ?? selectedSeries, []);
+    groups.get(measurement.series_id ?? selectedSeries).push(measurement);
+  });
+  const seriesLabels = new Map();
+  if (includeSeries) {
+    $('#measurement-headers').innerHTML = '<th>SERIES</th><th>MEASURED AT</th><th>DEVIATION SINCE START</th><th>AVERAGE SINCE START</th><th>AVERAGE LAST PERIOD</th><th></th>';
+    for (const [seriesId, rows] of groups) {
+      seriesLabels.set(seriesId, dateRangeLabel(rows[0].series_started_at, rows[rows.length - 1].measured_at));
+    }
+  } else {
+    $('#measurement-headers').innerHTML = '<th>MEASURED AT</th><th>DEVIATION SINCE START</th><th>AVERAGE SINCE START</th><th>AVERAGE LAST PERIOD</th><th></th>';
+  }
+  $('#measurement-rows').innerHTML = measurements.map(m => {
+    const seriesId = m.series_id ?? selectedSeries;
+    const rows = groups.get(seriesId);
+    const index = rows.indexOf(m);
+    const first = rows[0];
+    const previous = rows[index - 1];
     const elapsedDays = (new Date(m.measured_at) - new Date(first.measured_at)) / 86400000;
     const averageRate = elapsedDays > 0 ? (m.offset_seconds - first.offset_seconds) / elapsedDays : null;
     const periodDays = previous ? (new Date(m.measured_at) - new Date(previous.measured_at)) / 86400000 : null;
     const periodRate = periodDays > 0 ? (m.offset_seconds - previous.offset_seconds) / periodDays : null;
     const tone = m.offset_seconds < 0 ? 'slow' : m.offset_seconds > 0 ? 'fast' : '';
     const periodTone = periodRate === null ? '' : periodRate < 0 ? 'slow' : periodRate > 0 ? 'fast' : '';
-    return `<tr><td>${dateLabel(m.measured_at)}</td><td class="offset ${tone}">${wholeSeconds(m.offset_seconds)} s</td><td class="daily-rate">${averageRate === null ? '—' : `${fixedSeconds(averageRate)} s/d`}</td><td class="daily-rate ${periodTone}">${periodRate === null ? '—' : `${fixedSeconds(periodRate)} s/d`}</td><td class="delete-cell"><button type="button" class="delete-measurement" data-measurement-id="${m.id}" data-is-start="${index === 0}" data-is-only="${data.measurements.length === 1}" aria-label="Delete measurement ${dateLabel(m.measured_at)}" title="Delete measurement">×</button></td></tr>`;
+    const seriesCell = includeSeries ? `<td>${escapeHtml(seriesLabels.get(seriesId))}</td>` : '';
+    return `<tr>${seriesCell}<td>${dateLabel(m.measured_at)}</td><td class="offset ${tone}">${wholeSeconds(m.offset_seconds)} s</td><td class="daily-rate">${averageRate === null ? '—' : `${fixedSeconds(averageRate)} s/d`}</td><td class="daily-rate ${periodTone}">${periodRate === null ? '—' : `${fixedSeconds(periodRate)} s/d`}</td><td class="delete-cell"><button type="button" class="delete-measurement" data-series-id="${seriesId}" data-measurement-id="${m.id}" data-is-start="${index === 0}" data-is-only="${rows.length === 1}" aria-label="Delete measurement ${dateLabel(m.measured_at)}" title="Delete measurement">×</button></td></tr>`;
   }).join('');
-  const ms = data.measurements;
 }
 
 $('#watch-form').addEventListener('submit', async e => {
@@ -223,12 +282,13 @@ $('#new-series').addEventListener('click', () => {
   $('#started-at').value = localDateTime();
   $('#series-dialog').showModal();
 });
-$('#series-picker').addEventListener('change', e => showSeries(Number(e.target.value)));
+$('#series-picker').addEventListener('change', e => e.target.value === 'all' ? showAllSeries() : showSeries(Number(e.target.value)));
 $('#measurement-rows').addEventListener('click', async e => {
   const button = e.target.closest('.delete-measurement');
   if (!button) return;
   const isStart = button.dataset.isStart === 'true';
   const isOnly = button.dataset.isOnly === 'true';
+  const viewingAllSeries = selectedSeries === 'all';
   const message = isOnly
     ? 'This is the only measurement in this series. Delete the measurement and the empty series?'
     : isStart
@@ -236,8 +296,8 @@ $('#measurement-rows').addEventListener('click', async e => {
       : 'Delete this measurement?';
   if (!window.confirm(message)) return;
   try {
-    const result = await api(`/api/series/${selectedSeries}/measurements/${button.dataset.measurementId}`, { method: 'DELETE' });
-    if (result.series_deleted) selectedSeries = null;
+    const result = await api(`/api/series/${button.dataset.seriesId}/measurements/${button.dataset.measurementId}`, { method: 'DELETE' });
+    if (result.series_deleted && !viewingAllSeries) selectedSeries = null;
     await refreshWatches();
     await refreshSeries();
     toast(result.series_deleted ? 'Measurement and empty series deleted.' : 'Measurement deleted.');
@@ -265,7 +325,7 @@ $('#measurement-dialog').addEventListener('close', () => { $('#offset').value = 
 
 $('#measurement-form').addEventListener('submit', async e => {
   e.preventDefault();
-  if (!selectedSeries) return;
+  if (!selectedSeries || selectedSeries === 'all') return;
   try {
     await api(`/api/series/${selectedSeries}/measurements`, { method: 'POST', body: JSON.stringify({ measured_at: new Date($('#measured-at').value).toISOString(), offset_seconds: $('#offset').value }) });
     $('#measurement-dialog').close(); $('#offset').value = ''; $('#measured-at').value = localDateTime(); await showSeries(selectedSeries); await refreshWatches(); toast('Measurement saved.');
