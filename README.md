@@ -2,7 +2,7 @@
 
 A local web app for tracking the accuracy of mechanical watches.
 
-![watch-drift screenshot](screenshot-light-dark.png)
+![watch-drift screenshot](screenshot.png)
 
 ## Run locally
 
