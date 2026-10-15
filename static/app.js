@@ -5,6 +5,8 @@ let selectedWatchId = null;
 let deviationChart = null;
 let chartMeasurements = [];
 let chartWatchRange = null;
+let chartWatchMeasurements = [];
+let chartMetric = 'deviation';
 let chartSeriesList = null;
 let printMode = false;
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -109,31 +111,41 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
   const dark = colorScheme.matches && !printMode;
   const textColor = printMode ? '#555' : getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
   const gridColor = dark ? 'rgba(174,181,191,.14)' : 'rgba(82,94,108,.12)';
-  const offsets = measurements.map(m => Number(m.offset_seconds));
-  const minOffset = Number(watchRange?.min_offset ?? Math.min(...offsets));
-  const maxOffset = Number(watchRange?.max_offset ?? Math.max(...offsets));
-  const rangePadding = Math.max((maxOffset - minOffset) * 0.06, 1);
-  const yMin = minOffset - rangePadding;
-  const yMax = maxOffset + rangePadding;
-  const datasets = seriesList
-    ? seriesList.map(series => ({
-        label: dateRangeLabel(series.started_at, series.ended_at),
-        data: measurements.filter(m => m.series_id === series.id)
-          .map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        pointBorderWidth: 0,
-        tension: 0,
-      }))
-    : [{
-      data: measurements.map(m => ({ x: new Date(m.measured_at).getTime(), y: Number(m.offset_seconds) })),
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-      pointBorderWidth: 0,
-      tension: 0,
-    }];
+  const average = chartMetric === 'average';
+  const unit = average ? 's/d' : 's';
+  $('#chart-title').textContent = average ? 'Average over time' : 'Deviation over time';
+  $('#deviation-chart').setAttribute('aria-label', average ? 'Average watch deviation since series start in seconds per day over time' : 'Watch deviation in seconds over time');
+  const toPoints = rows => rows.map(m => {
+    const elapsedDays = (new Date(m.measured_at) - new Date(rows[0].measured_at)) / 86400000;
+    return { x: new Date(m.measured_at).getTime(), y: average
+      ? (elapsedDays > 0 ? (m.offset_seconds - rows[0].offset_seconds) / elapsedDays : null)
+      : Number(m.offset_seconds) };
+  }).filter(point => point.y !== null && Number.isFinite(point.y));
+  const watchGroups = new Map();
+  chartWatchMeasurements.forEach(m => {
+    if (!watchGroups.has(m.series_id)) watchGroups.set(m.series_id, []);
+    watchGroups.get(m.series_id).push(m);
+  });
+  const values = average
+    ? [...watchGroups.values()].flatMap(rows => toPoints(rows).map(point => point.y))
+    : measurements.map(m => Number(m.offset_seconds));
+  const minValue = average ? Math.min(0, ...values) : Number(watchRange?.min_offset ?? Math.min(...values));
+  const maxValue = average ? Math.max(0, ...values) : Number(watchRange?.max_offset ?? Math.max(...values));
+  const rangePadding = Math.max((maxValue - minValue) * 0.06, average ? 0.1 : 1);
+  const yMin = minValue - rangePadding;
+  const yMax = maxValue + rangePadding;
+  const groups = seriesList
+    ? seriesList.map(series => ({ label: dateRangeLabel(series.started_at, series.ended_at), rows: measurements.filter(m => m.series_id === series.id) }))
+    : [{ rows: measurements }];
+  const datasets = groups.map(group => ({
+    label: group.label,
+    data: toPoints(group.rows),
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    pointBorderWidth: 0,
+    tension: 0,
+  }));
   const shortDate = value => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
     .format(new Date(Number(value))).replace(/\.$/, '');
 
@@ -158,7 +170,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
         tooltip: {
           callbacks: {
             title: items => items.length ? dateLabel(new Date(items[0].parsed.x)) : '',
-            label: item => `${wholeSeconds(item.parsed.y)} s`,
+            label: item => `${average ? fixedSeconds(item.parsed.y) : wholeSeconds(item.parsed.y)} ${unit}`,
           },
         },
       },
@@ -176,7 +188,7 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
           border: { display: false },
           ticks: {
             color: textColor,
-            callback: value => `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(value)} s`,
+            callback: value => `${new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(value)} ${unit}`,
           },
         },
       },
@@ -228,6 +240,8 @@ async function showSeries(id) {
   selectedWatchId = data.series.watch_id;
   renderWatchList();
   updatePrintMeta(dateRangeLabel(data.series.started_at, data.measurements.at(-1)?.measured_at || data.series.started_at));
+  const watchData = await api(`/api/watches/${data.series.watch_id}/measurements`);
+  chartWatchMeasurements = watchData.measurements;
   renderDeviationChart(data.measurements, data.watch_range);
   renderMeasurementRows(data.measurements, false);
 }
@@ -238,6 +252,7 @@ async function showAllSeries() {
   $('#series-area').hidden = false;
   $('#open-measurement-dialog').hidden = true;
   updatePrintMeta('All series');
+  chartWatchMeasurements = data.measurements;
   renderDeviationChart(data.measurements, data.watch_range, data.series);
   renderMeasurementRows(data.measurements, true);
 }
@@ -353,3 +368,8 @@ $('#measured-at').value = localDateTime();
 updateReferenceClock();
 setInterval(updateReferenceClock, 250);
 refreshWatches().then(refreshSeries).catch(err => toast(err.message));
+
+$('#chart-metric').addEventListener('change', e => {
+  chartMetric = e.target.value;
+  renderDeviationChart(chartMeasurements, chartWatchRange, chartSeriesList);
+});

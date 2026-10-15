@@ -253,3 +253,9 @@ dialog{border-radius:var(--radius-surface)}
 @media screen and (prefers-color-scheme:dark){
   :root{--muted:#aeb5bf}
 }
+
+.chart-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.content>.series-toolbar{padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.chart-header .chart-title{display:none;margin:0}
+#chart-metric{width:auto;font-size:11px;padding:5px 8px}
+@media print{#chart-metric{display:none}.chart-header{margin-bottom:2mm}.chart-header .chart-title{display:block}}
