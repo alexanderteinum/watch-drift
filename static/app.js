@@ -111,14 +111,16 @@ function renderDeviationChart(measurements, watchRange = chartWatchRange, series
   const dark = colorScheme.matches && !printMode;
   const textColor = printMode ? '#555' : getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
   const gridColor = dark ? 'rgba(174,181,191,.14)' : 'rgba(82,94,108,.12)';
-  const average = chartMetric === 'average';
+  const average = chartMetric !== 'deviation';
   const unit = average ? 's/d' : 's';
-  $('#chart-title').textContent = average ? 'Average over time' : 'Deviation over time';
-  $('#deviation-chart').setAttribute('aria-label', average ? 'Average watch deviation since series start in seconds per day over time' : 'Watch deviation in seconds over time');
-  const toPoints = rows => rows.map(m => {
-    const elapsedDays = (new Date(m.measured_at) - new Date(rows[0].measured_at)) / 86400000;
+  const title = { deviation: 'Deviation since start', average: 'Average since start', period: 'Average last period' }[chartMetric];
+  $('#chart-title').textContent = title;
+  $('#deviation-chart').setAttribute('aria-label', `${title} over time (${unit})`);
+  const toPoints = rows => rows.map((m, index) => {
+    const reference = chartMetric === 'period' ? rows[index - 1] : rows[0];
+    const elapsedDays = reference ? (new Date(m.measured_at) - new Date(reference.measured_at)) / 86400000 : 0;
     return { x: new Date(m.measured_at).getTime(), y: average
-      ? (elapsedDays > 0 ? (m.offset_seconds - rows[0].offset_seconds) / elapsedDays : null)
+      ? (elapsedDays > 0 ? (m.offset_seconds - reference.offset_seconds) / elapsedDays : null)
       : Number(m.offset_seconds) };
   }).filter(point => point.y !== null && Number.isFinite(point.y));
   const watchGroups = new Map();
